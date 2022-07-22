@@ -1,5 +1,5 @@
 <!-- fg=white bg=black -->
-# Django+Docker
+# Bienvenue !
 <!-- effect=matrix -->
 ---
 <!-- fg=white bg=black -->
