@@ -1,0 +1,112 @@
+# Développer et déployer une application Django
+
+## Django
+
+### MVT vs. MVC
+
+## OhMyBlog!
+
+### Création d'un environnement virtuel
+
+### Installation de Django :
+
+### Création du projet et de l'application
+
+#### Ajout de l'application dans le fichier de configuration
+
+#### Changement de la langue et du fuseau horaire
+
+### Le modèle
+
+#### omyblog/blog/models.py
+
+# ohmyblog/blog/admin.py
+
+### La vue
+
+#### ohmyblog/blog/views.py
+
+### Ajout de l'URL
+
+#### URLs du site web : ohmyblog/ohmyblog/urls.py
+
+#### URLs de l'application : ohmyblog/blog/urls.py
+
+### Le gabarit (template)
+
+#### ohmyblog/blog/templates/blog/base.html
+
+#### blog/templates/blog/index.html
+
+### Migration et rendu
+
+#### Ajout d'un article
+
+### Afficher un article
+
+#### ohmyblog/blog/views.py
+
+#### ohmyblog/blog/urls.py
+
+#### ohmyblog/blog/templates/blog/index.html
+
+#### ohmyblog/blog/templates/blog/detail.html
+
+### Les fichiers statiques
+
+#### ohmyblog/blog/static/blog/css/styles.css
+
+#### Chargement des fichiers statiques : ohmyblog/blog/templates/blog/base.html
+
+### Le rendu
+
+## Test de l'application en production
+
+### Le fichier de configuration `settings.py`
+
+#### SECRET_KEY
+
+# À ajouter en tête du fichier.
+
+#### DEBUG
+
+#### ALLOWED_HOSTS et CSRF_TRUSTED_ORIGINS
+
+# Sans cela l'accès à la console d'aministration génère une exception.
+
+#### STATIC_ROOT
+
+### Docker
+
+### Gunicorn
+
+### Nginx
+
+### Le conteneur Docker
+
+### Le Dockerfile pour Python et les modules Gunicorn et Django
+
+#### ohmyblog/requirements.txt
+
+#### ohmyblog/Dockerfile
+
+#### ohmyblog/entrypoint.sh
+
+#! /usr/bin/env sh
+
+### Le Dockerfile pour Nginx
+
+#### ohmyblog/nginx/Dockerfile
+
+#### ohmyblog/nginx/nginx.conf
+
+### Le fichier docker-compose
+
+#### ohmyblog/docker-compose.yml
+
+### L'instant de vérité
+
+## Conclusion
+
+## Le mot de la fin
+
