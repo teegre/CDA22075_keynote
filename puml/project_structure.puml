@@ -1,0 +1,41 @@
+@startuml
+!theme plain
+skinparam rectancle roundCorner 8
+skinparam noteBackgroundColor LightGoldenRodYellow
+
+folder myblog as B1
+folder blog as BL
+folder templates as T
+folder blog as BL2
+file base.html
+file index.html
+file admin.py as A
+file models.py as M
+file urls.py as U2
+file views.py as V
+folder myblog as B2
+file settings.py as S
+file urls.py as U1
+
+B1 -d-> BL
+BL --> T
+T --> BL2
+BL2 --> base.html
+BL2 --> index.html
+BL --> A
+BL --> M
+BL --> U2
+BL --> V
+B1 -d-> B2
+B2 --> S
+B2 --> U1
+
+note bottom of S : fichier de configuration
+note bottom of U2 : urls de l'application
+note bottom of M : modèles
+note bottom of V : vues
+note top of T : gabarits
+
+caption Arborescence du projet **Django**
+footer Diagramme non exhaustif
+@enduml

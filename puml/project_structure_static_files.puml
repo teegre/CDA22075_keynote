@@ -1,0 +1,20 @@
+@startuml
+!theme plain
+skinparam rectancle roundCorner 8
+skinparam noteBackgroundColor LightGoldenRodYellow
+
+folder myblog as B1
+folder blog as BL1
+folder static as ST
+folder blog as BL2
+folder css as C
+file styles.css as STY
+
+B1 -d-> BL1
+BL1 -r-> ST
+ST -r-> BL2
+BL2 --> C
+C --> STY
+
+caption Fichiers statiques
+@enduml

@@ -1,0 +1,11 @@
+{% extends 'blog/base.html' %}
+{% block title %}MyBlog! {{ article.title }}{% endblock %}
+{% block body %}
+      <h1>{{ article.title }}</h1>
+      <hr>
+      <time>Publié le {{article.date|date:'d/m/Y' }}</time>
+      <article>
+        <p>{{ article.text|safe }}</p>
+      </article>
+      <a href="{% url 'index' %}">home</a>
+{% endblock %}

@@ -1,0 +1,18 @@
+@startuml
+!theme plain
+skinparam noteBackgroundColor LightGoldenRodYellow
+left to right direction
+circle Navigateur as C
+package "Conteneur Docker" as S {
+  [ **Nginx** ] as N
+  [ **Gunicorn** ] as G
+  [ **Django** ] as D
+}
+note top of N: Serveur web
+note bottom of G: Serveur d'application
+note bottom of D: Application
+C --> N : http://0.0.0.0
+N --> G
+G --> D
+caption "Conteneur **Docker** pour une application **Django**"
+@enduml

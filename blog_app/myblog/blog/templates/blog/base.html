@@ -1,0 +1,19 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" type="text/css" href="{% static 'blog/css/styles.css' %}">
+    <link rel="shortcut icon" type="img/x-icon" href="{% static 'blog/favicon.ico' %}">
+    <title>{% block title %}{% endblock %}</title>
+  </head>
+  <body>
+    {% block body %}
+    {% endblock %}
+    <hr>
+    <footer>
+      <span>© {% now 'Y' %} myblog</span>
+    </footer>
+  </body>
+</html>

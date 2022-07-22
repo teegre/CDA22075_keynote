@@ -1,0 +1,22 @@
+@startuml
+!theme plain
+skinparam actorStyle Hollow
+left to right direction
+actor Internaute as U
+actor Blogueur as B
+rectangle MyBlog! {
+  usecase "Consulte la liste des articles" as list
+  usecase "Lit un article" as read
+  usecase "Gère les articles" as manage
+  usecase "Ajout" as add 
+  usecase "Modification" as mod
+  usecase "Suppression" as del
+}
+U --> list
+U --> read
+B --> manage
+manage <-- add
+manage <-- mod
+manage <-- del
+B --|> U : (extends)
+@enduml

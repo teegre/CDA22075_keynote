@@ -1,0 +1,14 @@
+{% extends 'blog/base.html' %}
+{% block title %}MyBlog!{% endblock %}
+{% block body %}
+  <h1>&#128149; MyBlog!</h1>
+  <hr>
+  <h2>Liste de mes articles &#128525;</h2>
+  <ul>
+  {% for article in articles %}
+  <li><div class="lien"><a href="{% url 'detail' article.id %}">{{ article.date|date:'d/m/Y' }} {{ article.title }}</a></div></li>
+  {% empty %}
+    <li>C'est vide...</li>
+  {% endfor %}
+  </ul>
+{% endblock %}

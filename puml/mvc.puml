@@ -1,0 +1,15 @@
+@startuml
+!theme plain
+skinparam roundCorner 8
+skinparam linetype ortho
+circle "Requête\nHTTP" as RQ
+circle "Réponse\nHTTP" as RS
+rectangle MODÈLE as M
+rectangle VUE as V
+rectangle CONTRÔLEUR as C
+RQ -> C
+V <--u-> C : Rendu
+C <--u-> M : Lecture/écriture\ndes données
+C -> RS
+caption Architecture **MVC**
+@enduml

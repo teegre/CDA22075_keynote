@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  myblog_django:
+    volumes:
+      - static:/app_data/static
+#    env_file:
+#      - .env
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+  nginx:
+    build: ./nginx
+    volumes:
+      - static:/app_data/static
+    ports:
+      - "80:80"
+    depends_on:
+      - myblog_django
+
+volumes:
+  static:

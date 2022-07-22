@@ -1,0 +1,20 @@
+@startuml
+!theme plain
+'skinparam actorStyle Hollow
+skinparam defaultFontColor purple
+left to right direction
+'caption Server infrastructure for a Django application in production.
+cloud Internet as C
+rectangle Serveur as S {
+  [ **Nginx** ] as N
+  [ **Gunicorn** ] as G
+  [ **Django** ] as D
+}
+note top of N: Serveur web
+note left of G: Serveur d'application
+note top of D: Application
+C --> N
+N --> G
+G --> D
+caption "Infrastructure d'un serveur en production pour une application Django"
+@enduml
