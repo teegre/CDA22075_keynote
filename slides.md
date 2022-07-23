@@ -224,5 +224,8 @@ http://0.0.0.0    | +-------+      +----------+        +--------+ |
 ---
 <!-- fg=white bg=black -->
 ## M E R C I  D E  V O T R E  A T T E N T I O N  !
+Retrouvez cette présentation à l'adresse suivante :
+
+## https://github.com/teegre/CDA22075_keynote
 <!-- effect=stars -->
 ---
