@@ -1,0 +1,886 @@
+<h1>Django+Docker</h1>
+
+<p>Dans cet article nous allons voir dans les grandes lignes le développement, le test et le déploiement en <strong>production</strong> dans un conteneur <strong>Docker</strong>.</p>
+
+<h2>Django</h2>
+
+<p><strong>Django</strong> est un web framework écrit en <strong>Python</strong> qui à l'origine fut développé entre 2003 et 2005 par une équipe spécialisée dans la création et la maintenance de sites journalistiques. En septembre 2008 la version 1.0 voit le jour et après de nombreuses améliorations et un développement actif, nous sommes aujourd'hui à la version 4.0.</p>
+
+<h3>MVT vs. MVC</h3>
+
+<p>L'architecture <strong>MVC</strong> (pour <strong>Model View Controller</strong>) est un modèle de conception qui sépare le traitement et la représentation des données :</p>
+
+<pre><code>
+            ,--------.
+            | modèle |
+            `--------'
+                ^
+                | Lecture/écriture
+                | des données
+Requête         v
+HTTP      ,------------.
+( )-----> | contrôleur | ----->( )
+          `------------'       Réponse
+                ^              HTTP
+                | Rendu
+                v
+             ,-----.
+             | vue |
+             `-----'
+
+
+</code></pre>
+
+<ul>
+<li>Le <strong>modèle</strong> constitue la structure logique et les contraintes de l'application representée par une base de données (MySQL, PostgreSQL&hellip;)</li>
+<li>La <strong>vue</strong> gère la représentation et l'affichage des données.</li>
+<li>Le <strong>contrôleur</strong> joue le rôle de pont entre les deux : il manipule les données et gère le rendu de la <strong>vue</strong>.</li>
+</ul>
+
+
+<p><strong>Django</strong> utilise l'architecture <strong>MVT</strong> (pour <strong>Model View Template</strong>) qui diffère légérement du <strong>MVC</strong> en ce sens que la partie contrôleur est directement prise en charge par le framework :</p>
+
+<pre><code>
+            Requête
+            HTTP      ,-------.
+            ( )-----> | urls  |
+                      `-------'
+                          | Redirection
+                          | vers la vue
+                          | appropriée
+                          v
+,--------.   Données   ,-----.
+| modèle | <---------> | vue | ----->( )
+`--------'             `-----'       Réponse
+                          ^          HTTP
+                          |
+                          |
+                     ,---------.
+                     | gabarit |
+                     `---------'
+
+
+</code></pre>
+
+<ul>
+<li>Le <strong>modèle</strong> est semblable à celui de l'architecture <strong>MVC</strong>.</li>
+<li>La <strong>vue</strong> accède aux données et en gère le rendu.</li>
+<li>Le <strong>gabarit</strong> (ou <strong>template</strong>) est utilisé par la vue pour le rendu des données.</li>
+</ul>
+
+
+<h2>OhMyBlog!</h2>
+
+<p>Voici l'application que nous allons créer : un simple <strong>blog</strong></p>
+
+<pre><code>
+               ,-.               ,-.
+               `-'  :extends:    `-'
+               /|\ -----------|&gt; /|\
+               / \               / \
+             Blogueur         Internaute --------.
+                |                 |              |
+                |                 |              |
+          ,----------.     ,-------------.  ,---------.
+          | Gère les |     | Consulte la |  | Lit un  |
+          | articles |     | liste des   |  | article |
+          `----------'     | articles    |  `---------'
+             |  |  |       `-------------'
+             |  |  |
+(Ajout) -----'  |  |_________
+                |            |
+         (Modification)      |
+                             |
+                       (Suppression)
+
+
+</code></pre>
+
+<h3>Création d'un environnement virtuel</h3>
+
+<p>Pour faciliter les choses, nous allons créer un <strong>environnement virtuel</strong>. Ce qui signifie que tous les <strong>modules Python</strong> dont nous aurons besoin seront uniquement installés <em>dans l'environnement virtuel</em> sans surcharger le système.</p>
+
+<pre><code>
+$ python -m venv venv
+$ source venv/bin/activate
+(venv) $
+
+
+</code></pre>
+
+<p>La première commande lance la création de <strong>l'environnement virtuel</strong>, et la seconde l'active.</p>
+
+<p><blockquote><strong>Note</strong> : la commande <code>deactivate</code> permet de sortir d'un <strong>environnement virtuel</strong>.</blockquote></p>
+
+<p>Mettons à jour <strong>pip</strong>, le gestionnaire de paquets de <strong>Python</strong>.</p>
+
+<pre><code>
+(venv) $ pip install --upgrade pip
+Requirement already satisfied: pip in ./venv/lib/python3.10/site-packages (22.0.4)
+Collecting pip
+  Using cached pip-22.1.2-py3-none-any.whl (2.1 MB)
+Installing collected packages: pip
+  Attempting uninstall: pip
+    Found existing installation: pip 22.0.4
+    Uninstalling pip-22.0.4:
+      Successfully uninstalled pip-22.0.4
+Successfully installed pip-22.1.2
+(venv) $
+
+
+</code></pre>
+
+<h3>Installation de Django :</h3>
+
+<p>Pour installer <strong>Django</strong>, il suffit d'entrer la commande suivante :</p>
+
+<pre><code>
+(venv) $ pip install django
+Collecting django
+  Using cached Django-4.0.6-py3-none-any.whl (8.0 MB)
+Collecting sqlparse>=0.2.2
+  Using cached sqlparse-0.4.2-py3-none-any.whl (42 kB)
+Collecting asgiref<4,>=3.4.1
+  Using cached asgiref-3.5.2-py3-none-any.whl (22 kB)
+Installing collected packages: sqlparse, asgiref, django
+Successfully installed asgiref-3.5.2 django-4.0.6 sqlparse-0.4.2
+(venv) $
+
+</code></pre>
+
+<h3>Création du projet et de l'application</h3>
+
+<p>Nous devons pour commencer, créer notre <strong>projet</strong> puis notre <strong>application</strong>.
+Pour cela, il suffit d'entrer les commandes suivantes dans un terminal :</p>
+
+<pre><code>
+(venv) $ django-admin startproject ohmyblog
+(venv) $ cd ohmyblog
+(venv) $ ./manage.py startapp blog
+(venv) $
+
+</code></pre>
+
+<h4>Ajout de l'application dans le fichier de configuration</h4>
+
+<p>La dernière étape avant de commencer à coder consiste à modifier le fichier de configuration <code>settings.py</code> situé dans le répertoire <code>ohmyblog/</code> :</p>
+
+<pre><code>
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'blog', # + Ajout de notre application ici.
+]
+
+</code></pre>
+
+<h4>Changement de la langue et du fuseau horaire</h4>
+
+<pre><code>
+LANGUAGE_CODE = 'fr-fr'
+TIME_ZONE = 'Europe/Paris'
+
+</code></pre>
+
+<h3>Le modèle</h3>
+
+<p>Nous allons définir un <strong>modèle</strong> pour notre application. Un blog étant composé d'articles, nous allons créer un <strong>modèle</strong> qui représentera un <strong>article de notre blog</strong>.</p>
+
+<p>Le modèle <strong>deviendra</strong> une <strong>table</strong> dans une <strong>base de données</strong> et contiendra les <strong>champs</strong> suivants :</p>
+
+<table>
+<thead>
+<tr>
+<th> Champ </th>
+<th> Description         </th>
+<th> Type      </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td> title </td>
+<td> Titre de l'article  </td>
+<td> Char(100) </td>
+</tr>
+<tr>
+<td> date  </td>
+<td> Date de publication </td>
+<td> DateTime  </td>
+</tr>
+<tr>
+<td> text  </td>
+<td> Texte de l'article  </td>
+<td> Text      </td>
+</tr>
+</tbody>
+</table>
+
+
+<p>La <strong>clef primaire</strong> sera automatiquement créée par <strong>Django</strong> et porte le nom de <code>id</code>.</p>
+
+<h4>omyblog/blog/models.py</h4>
+
+<pre><code>
+from django.db import models</p>
+
+class Article(models.Model):
+  title = models.CharField(max_length=100)
+  date = models.DateTimeField()
+  text = models.TextField()
+
+</code></pre>
+
+<p>Ajout du modèle à la console d'administration (nous en verrons l'utilité plus tard):</p>
+
+<pre><code>
+# ohmyblog/blog/admin.py
+
+from django.contrib import admin
+from blog.models import Article   # +
+
+admin.site.register(Article)      # +
+
+</code></pre>
+
+<h3>La vue</h3>
+
+<p>Maintenant que notre modèle est défini, créons notre <strong>vue</strong> qui se chargera d'afficher tous les articles.</p>
+
+<h4>ohmyblog/blog/views.py</h4>
+
+<pre><code>
+from django.views import generic
+from .models import Article
+
+class IndexView(generic.ListView):
+  # Modèle utilisé pour la vue
+  model = Article
+  # Gabarit
+  template_name = ''blog/index.html'
+  # Nom de l'objet dans le gabarit
+  context_object_name = 'articles'
+
+</code></pre>
+
+<h3>Ajout de l'URL</h3>
+
+<h4>URLs du site web : ohmyblog/ohmyblog/urls.py</h4>
+
+<pre><code>
+from django.contrib import admin
+from django.urls import include, path # +
+
+urlpatterns = [
+  path('admin/', admin.site.urls),
+  # Ici on inclut le fichier qui contient les URLs
+  # de notre application.
+  path('', include('blog.urls'))      # +
+]
+
+</code></pre>
+
+<h4>URLs de l'application : ohmyblog/blog/urls.py</h4>
+
+<pre><code>
+from django.urls import path
+from .views import IndexView
+
+urlpatterns = [
+  path('', IndexView.as_view(), name='index'),
+]
+
+</code></pre>
+
+<h3>Le gabarit (template)</h3>
+
+<h4>ohmyblog/blog/templates/blog/base.html</h4>
+
+<p>Ce fichier constitue la base de tous les autres gabarits&hellip;</p>
+
+<pre><code>
+&lt;!DOCTYPE html&gt;
+&lt;html lang="fr"&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"&gt;
+    &lt;title&gt;{% block title %}{% endblock %}</title> {# definition du bloc title #}
+  &lt;/head&gt;
+  &lt;body&gt;
+    {% block body %} {# définition du block body #}
+    {% endblock %}
+    &lt;hr&gt;
+    &lt;footer&gt;
+      &lt;span&gt;© {% now 'Y' %} OhMyBlog!</span> {# affiche l'année en cours #}
+    &lt;/footer&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+
+</code></pre>
+
+<h4>blog/templates/blog/index.html</h4>
+
+<p>&hellip; Et comme le suggère la première ligne ci-dessous, <code>index.html</code> est une <em>extension</em> de <code>base.html</code>. En d'autres termes, tout ce qui se trouve dans <code>base.html</code> est repris dans <code>index.html</code>.</p>
+
+<pre><code>
+{% extends 'blog/base.html' %}
+{% block title %}OhMyBlog!{% endblock %}
+{% block body %}
+  &lt;h1&gt;OhMyBlog!&lt;/h1&gt;
+  &lt;ul&gt;
+  {% for article in articles %}
+    &lt;li&gt;{{ article.date|date:'d/m/Y' }} {{ article.title }}&lt;/li&gt;
+  {% empty %}
+    &lt;li&gt;C'est vide...&lt;/li&gt;
+  {% endfor %}
+  &lt;/ul&gt;
+{% endblock %}
+
+</code></pre>
+
+<h3>Migration et rendu</h3>
+
+<p>Maintenant que tout est prêt, il faut créer la base de données en entrant les commandes suivantes :</p>
+
+<pre><code>
+(venv) $ ./manage.py makemigrations
+(venv) $ ./manage.py migrate
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, sessions
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying sessions.0001_initial... OK
+(venv) $
+
+</code></pre>
+
+<p><blockquote><strong>Note</strong> : il faudra exécuter ces commandes après la modification ou l'ajout de modèles.</blockquote></p>
+
+<p>Maintenant lançons le <strong>serveur Django</strong> via la ligne de commande :</p>
+
+<pre><code>
+(venv) $ ./manage.py runserver 8080
+Watching for file changes with StatReloader
+Performing system checks...
+
+System check identified no issues (0 silenced).
+July 11, 2022 - 16:35:16
+Django version 4.0.6, using settings 'ohmyblog.settings'
+Starting development server at http://127.0.0.1:8080/
+Quit the server with CONTROL-C.
+
+</code></pre>
+
+<p>Puis dans le navigateur taper <code>localhost:8080</code> dans la barre d'adresse</p>
+
+<h4>Ajout d'un article</h4>
+
+<pre><code>
+(venv) $ ./manage.py shell
+Python 3.10.5 (main, Jun  6 2022, 18:49:26) [GCC 12.1.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+(InteractiveConsole)
+
+&gt;&gt;&gt; from blog.models import Article
+&gt;&gt;&gt; from django.utils import timezone
+&gt;&gt;&gt; a = Article()
+&gt;&gt;&gt; a.title = 'Mon premier article'
+&gt;&gt;&gt; a.date = timezone.now()
+&gt;&gt;&gt; a.text = 'Ceci est mon premier article'
+&gt;&gt;&gt; a.save()
+&gt;&gt;&gt;
+
+</code></pre>
+
+<p>Il est également possible d'ajouter des articles depuis la <strong>console d'administration</strong> disponible à l'adresse : <code>localhost:8080/admin</code>.</p>
+
+<p>Mais avant cela, il est nécessaire de créer un <em>super utilisateur</em> via la commande <code>./manage.py createsuperuser</code> comme suit :</p>
+
+<pre><code>
+(venv) $ ./manage.py createsuperuser
+Nom d’utilisateur: admin
+Adresse électronique: admin@ohmyblog.com
+Password:
+Password (again):
+Superuser created successfully.
+(venv) $
+
+</code></pre>
+
+<p>Il est ensuite possible de se connecter à la <strong>console d'administration</strong> à l'adresse indiquée plus haut.</p>
+
+<p>En l'état, nous n'avons que la liste des articles. La prochaine étape consistera donc à transformer les éléments de la liste en <strong>liens</strong> vers le <strong>contenu des articles</strong>.</p>
+
+<h3>Afficher un article</h3>
+
+<p>Nous devons tout d'abord créer une nouvelle <strong>vue</strong> et son <strong>gabarit</strong> associé, puis  une <strong>URL</strong>, et pour finir, modifier le gabarit <code>index.html</code> afin de rendre les <strong>articles consultables</strong>.</p>
+
+<h4>ohmyblog/blog/views.py</h4>
+
+<pre><code>
+from django.views import generic
+from .models import Article
+
+class IndexView(generic.ListView):
+  model = Article
+  template_name = 'blog/index.html'
+  context_object_name = 'articles'
+
+class ArticleView(generic.DetailView): # +
+  model = Article                      # +
+  template_name = 'blog/detail.html'   # +
+  context_object_name = 'article'      # +
+
+</code></pre>
+
+<h4>ohmyblog/blog/urls.py</h4>
+
+<pre><code>
+from django.urls import path
+from .views import IndexView, ArticleView                         # +
+
+urlpatterns = [
+  path('', IndexView.as_view(), name='index'),
+  path('article/&lt;int:pk&gt;', ArticleView.as_view(), name='detail'), # +
+]
+</pre></code>
+
+<h4>ohmyblog/blog/templates/blog/index.html</h4>
+
+<pre><code>
+{% extends 'blog/base.html' %}
+{% block title %}OhMyBlog!{% endblock %}
+{% block body %}
+  &lt;h1&gt;OhMyBlog!&lt;/h1&gt;
+  &lt;ul&gt;
+  {% for article in articles %}
+    {# On ajoute un lien ici #}
+    &lt;li&gt;&lt;a href="{% url 'detail' article.id %}"&gt;{{ article.date|date:'d/m/Y' }} {{ article.title }}&lt;/a&gt;&lt;/li&gt;
+  {% empty %}
+    &lt;li&gt;C'est vide...&lt;/li&gt;
+  {% endfor %}
+  &lt;/ul&gt;
+{% endblock %}
+
+</code></pre>
+
+<h4>ohmyblog/blog/templates/blog/detail.html</h4>
+
+<pre><code>
+{% extends 'blog/base.html' %}
+{% block title %}OhMyBlog! {{ article.title }}{% endblock %}
+{% block body %}
+  &lt;h1&gt;{{ article.title }}&lt;/h1&gt;
+  &lt;time&gt;Publié le {{article.date|date:'d/m/Y' }}&lt;/time&gt;
+  &lt;article&gt;
+    {{ article.text|safe }}
+    {# Le filtre safe permet le rendu de l'éventuel code html contenu dans l'article #}
+  &lt;/article&gt;
+  &lt;a href="{% url 'index' %}"&gt;home&lt;/a&gt;
+{% endblock %}
+
+</code></pre>
+
+<h3>Les fichiers statiques</h3>
+
+<p>Dans <strong>Django</strong> les fichiers statiques sont des fichiers supplémentaires dont nous avons besoin pour notre site web, par exemple des fichiers <strong>Javascript</strong>, des <strong>images</strong> ou du <strong>CSS</strong>.
+Au cours du développement, ces fichiers sont stockés dans le répertoire <code>ohmyblog/blog/static/blog/</code>.</p>
+
+<p>Ajoutons dès à présent un peu de maquillage à notre blog.</p>
+
+<h4>ohmyblog/blog/static/blog/css/styles.css</h4>
+
+<pre><code>
+html {
+  font-family: Roboto, sans-serif;
+  background: lightcoral;
+  color: white;
+}
+
+hr {
+  border: solid pink;
+}
+
+ul {
+  list-style: none;
+  display: contents;
+}
+
+h1 {
+  font-size: xxx-large;
+}
+
+a {
+  color: whitesmoke;
+  text-decoration: none;
+  font-weight: bold;
+  transition: .25s ease-in-out;
+}
+
+a:hover {
+  color: pink;
+  transition: .25s;
+}
+
+time {
+  font-size: small;
+  font-style: italic;
+}
+
+</code></pre>
+
+<h4>Chargement des fichiers statiques : ohmyblog/blog/templates/blog/base.html</h4>
+
+<pre><code>
+{% load static %} {# + #}
+&lt;!DOCTYPE html&gt;
+&lt;html lang="fr"&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"&gt;
+    &lt;link rel="stylesheet" type="text/css" href="{% static 'blog/css/styles.css' %}"&gt; {# + #}
+    {# Pour faire bonne mesure ajoutons une favicon #}
+    &lt;link rel="shortcut icon" type="img/x-icon" href="{% static 'blog/favicon.ico' %}"&gt;
+    &lt;title&gt;{% block title %}{% endblock %}&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    {% block body %}
+    {% endblock %}
+    &lt;hr&gt;
+    &lt;footer&gt;
+      &lt;span&gt;© {% now 'Y' %} ohmyblog&lt;/span&gt;
+    &lt;/footer&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+
+</code></pre>
+
+<h2>Test de l'application en production</h2>
+
+<p>C'est ici que les choses sérieuses commencent !</p>
+
+<p>A défaut de serveur physique, nous allons tester notre application avec <strong>Docker</strong>. Mais avant cela quelques modifications s'imposent.</p>
+
+<h3>Le fichier de configuration <code>settings.py</code></h3>
+
+<h4>SECRET_KEY</h4>
+
+<p>Lors de la création du projet <strong>Django</strong>, la commande <code>django-admin</code> ajoute automatiquement au fichier <code>settings.py</code> une clef secrète <code>SECRET_KEY</code> générée aléatoirement. Cette clef assure la sécurisation des données signées et doit bien évidemment être gardée secrète. Nous allons donc la stocker dans un fichier externe, appelé <code>.env</code>, et le module <code>dotenv</code> nous permettra d'importer la valeur de <code>SECRET_KEY</code> en tant que <em>variable d'environnement</em>.</p>
+
+<p>Commençons par installer le module :</p>
+
+<pre><code>
+(venv) $ pip install python-dotenv
+Collecting python-dotenv
+  Using cached python_dotenv-0.20.0-py3-none-any.whl (17 kB)
+Installing collected packages: python-dotenv
+Successfully installed python-dotenv-0.20.0
+(venv) $
+
+</code></pre>
+
+<p>Puis dans le fichier <code>ohmyblog/ohmyblog/settings.py</code> :</p>
+
+<pre><code>
+# À ajouter en tête du fichier.
+
+import os                      # +
+from pathlib import Path
+from dotenv import load_dotenv # +
+                               # +
+load_dotenv()                  # +
+                               # +
+
+</code></pre>
+
+<p>Ensuite modifions la variable <code>SECRET_KEY</code> :</p>
+
+<pre><code>
+SECRET_KEY = os.getenv('SECRET_KEY')
+
+</code></pre>
+
+<p>Et générons une nouvelle clef :</p>
+
+<pre><code>
+(venv) $ ./manage.py shell -c \
+&gt; 'from django.core.management import utils; \
+&gt; print(f"SECRET_KEY=\"{utils.get_random_secret_key()}\"")' &gt; .env
+(venv) $ cat .env
+SECRET_KEY="MySuperComplicatedAndSecureSecretKey"
+(venv) $
+
+</code></pre>
+
+<h4>DEBUG</h4>
+
+<p>Par défaut, la valeur <code>True</code> est assignée à la variable <code>DEBUG</code>. Ce qui a pour effet de nous donner des informations utiles en cas d'erreur dans notre application. Cependant, en mode production ce fonctionnement n'est pas désirable. Nous allons procéder de la même façon que pour la variable <code>SECRET_KEY</code> en commençant par ajouter la ligne suivante à notre fichier <code>.env</code> :</p>
+
+<pre><code>
+SECRET_KEY="MySuperComplicatedAndSecureSecretKey"
+DEBUG="False"
+
+</code></pre>
+
+<p>Dans le fichier <code>settings.py</code>, modifions la varible <code>DEBUG</code> comme suit :</p>
+
+<pre><code>
+DEBUG = bool(os.getenv('DEBUG') == 'True')
+
+</code></pre>
+
+<p>De cette manière si nous voulons activer le <strong>mode debug</strong> il nous suffira d'assigner la valeur <code>"True"</code> à la variable d'environnement <code>DEBUG</code> dans le fichier <code>.env</code></p>
+
+<p><blockquote><strong>Note</strong> : dans le cas de l'utilisation de <strong>git</strong>, ne pas oublier d'ajouter <code>.env</code> au fichier <code>.gitignore</code>.</blockquote></p>
+
+<h4>ALLOWED_HOSTS et CSRF_TRUSTED_ORIGINS</h4>
+
+<p>Modifier la valeur de la variable <code>ALLOWED_HOSTS</code> :</p>
+
+<pre><code>
+ALLOWED_HOSTS = ['*']
+
+</code></pre>
+
+<p>Et ajouter la variable <code>CSRF_TRUSTED_ORIGINS</code>, comme suit :</p>
+
+<pre><code>
+# Sans cela l'accès à la console d'aministration génère une exception.
+CSRF_TRUSTED_ORIGINS = ['http://0.0.0.0/*'] # +
+
+</code></pre>
+
+<p>Nous pourrons ainsi accéder à notre application via <strong>Docker</strong> à l'adresse <code>http://0.0.0.0</code>.</p>
+
+<h4>STATIC_ROOT</h4>
+
+<p>Mauvaise nouvelle, en production, <strong>Django</strong> ne sert plus automatiquement les <strong>fichiers statiques</strong>. Cette tâche sera déléguée à <strong>Nginx</strong> comme nous le verrons plus tard.
+La variable <code>STATIC_ROOT</code> permet de définir l'emplacement où seront copiés les <strong>fichiers statiques</strong>.</p>
+
+<pre><code>
+STATIC_ROOT = '/app_data/static/' # +
+STATIC_URL = '/static/'
+
+</code></pre>
+
+<h3>Docker</h3>
+
+<blockquote><p><strong>Docker</strong> est une plateforme permettant de lancer certaines applications dans des conteneurs logiciels.
+&ndash; <cite>Source : Wikipédia</cite></p></blockquote>
+
+<pre><code>
+                                                     [ Application ]
+                  ,------------------.                      |
+                  | Conteneur Docker |                      |
+                  |-----------------------------------------v-----.
+                  | +-------+      +----------+        +--------+ |
+Navigateur ( )----->| Nginx | ---> | Gunicorn | -----> | Django | |
+http://0.0.0.0    | +-------+      +----------+        +--------+ |
+                  `-----^----------------^------------------------'
+                        |                |
+                        |                |
+                        |     [ Serveur d'application ]
+                        |
+                        |
+                 [ Serveur web ]
+
+</code></pre>
+
+<h3>Gunicorn</h3>
+
+<p><strong>Gunicorn</strong> est un <strong>serveur d'application</strong> (écrit en <strong>Python</strong>) qui sera utilisé à la place du <strong>serveur Django</strong>, ce dernier n'étant pas prévu pour être utilisé en <strong>production</strong>.</p>
+
+<h3>Nginx</h3>
+
+<p><strong>Nginx</strong> est un logiciel de <strong>serveur web</strong> ainsi qu'un <strong>proxy inverse</strong> (<strong>reverse proxy</strong>).
+C'est notamment cette fonctionnalité qui nous intéresse. Contrairement au <strong>serveur proxy</strong> qui permet à un utilisateur <strong>d'accéder au réseau Internet</strong>, le <strong>proxy inverse</strong> permet à un utilisateur d'Internet <strong>d'accéder à des serveurs internes</strong> (ici, en l'occurrence, <strong>Gunicorn</strong>).</p>
+
+<p><strong>Nginx</strong> sera également utile en tant que <strong>serveur des fichiers statiques</strong>.</p>
+
+<h3>Le conteneur Docker</h3>
+
+<p>À ce stade, nous avons donc besoin de créer :</p>
+
+<ul>
+<li>Un <strong>Dockerfile</strong> pour <strong>Python</strong> et ses modules (<strong>Django</strong> et <strong>Gunicorn</strong>).</li>
+<li>Un autre <strong>Dockerfile</strong> pour <strong>Nginx</strong>.</li>
+<li>Un <strong>script</strong> qui sera exécuté au <strong>lancement</strong> du <strong>conteneur</strong>.</li>
+<li>Et un fichier <strong>docker-compose</strong> pour coordonner le tout.</li>
+</ul>
+
+
+<h3>Le Dockerfile pour Python et les modules Gunicorn et Django</h3>
+
+<p>Pour commencer nous allons créer un fichier qui contient tous les <strong>modules Python</strong> utilisés dans notre projet.</p>
+
+<p><blockquote><strong>Note</strong> : Ce fichier sera utilisé pour installer tous les modules nécessaires lors de la création du <strong>conteneur Docker</strong>.</blockquote></p>
+
+<pre><code>
+(venv) $ pip freeze &gt; requirements.txt
+(venv) $ cat requirements.txt
+asgiref==3.5.2
+Django==4.0.6
+python-dotenv==0.20.0
+sqlparse==0.4.2
+
+</code></pre>
+
+<p>Ensuite, ajoutons le module <strong>Gunicorn</strong> au fichier :</p>
+
+<h4>ohmyblog/requirements.txt</h4>
+
+<pre><code>
+asgiref==3.5.2
+Django==4.0.6
+python-dotenv==0.20.0
+sqlparse==0.4.2
+gunicorn==20.1.0
+
+</code></pre>
+
+Maintenant, créons notre fichier <strong>Dockerfile</strong> :
+
+<h4>ohmyblog/Dockerfile</h4>
+
+<pre><code>
+FROM python:alpine3.16</p>
+
+RUN pip install &ndash;upgrade pip
+
+COPY ./requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . /app
+
+WORKDIR /app
+
+ENTRYPOINT ["./entrypoint.sh"]
+
+</code></pre>
+
+<p>Puis notre <strong>script</strong> <code>entrypoint.sh</code> :</p>
+
+<h4>ohmyblog/entrypoint.sh</h4>
+
+<pre><code>
+#! /usr/bin/env sh
+
+set -e
+
+./manage.py makemigrations &ndash;no-input
+./manage.py migrate &ndash;no-input
+./manage.py collectstatic &ndash;no-input
+
+gunicorn ohmyblog.wsgi:application -bind "0.0.0.0:8080"
+
+</code></pre>
+
+<p>Et rendons le exécutable :</p>
+
+<pre><code>
+(venv) $ chmod +x entrypoint.sh
+(venv) $
+
+</code></pre>
+
+<h3>Le Dockerfile pour Nginx</h3>
+
+<p>Même chose pour <strong>Nginx</strong> :</p>
+
+<h4>ohmyblog/nginx/Dockerfile</h4>
+
+<pre><code>
+FROM nginx:latest
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+
+</code></pre>
+
+<p>Et maintenant le fichier de configuration :</p>
+
+<h4>ohmyblog/nginx/nginx.conf</h4>
+
+<pre><code>
+upstream ohmyblog {
+  server ohmyblog_django:8080;
+}
+
+server {
+  listen 80;
+
+  location / {
+    proxy_pass http://ohmyblog;
+
+  location /static/ {
+    alias /app_data/static/;
+
+</code></pre>
+
+<h3>Le fichier docker-compose</h3>
+
+<p>Dernière étape, la création du fichier <strong>docker-compose</strong> :</p>
+
+<h4>ohmyblog/docker-compose.yml</h4>
+
+<pre><code>
+version: "3.8"
+  ohmyblog_django:
+    volumes:
+      - static:/app_data/static
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+  nginx:
+    build: ./nginx
+    volumes:
+      - static:/app_data/static
+    ports:
+      - "80:80"
+    depends_on:
+      - ohmyblog_django
+
+volumes:
+  static:
+
+</code></pre>
+
+<h3>L'instant de vérité</h3>
+
+<p>Maintenant que tout est prêt, construisons le <strong>conteneur Docker</strong> :</p>
+
+<pre><code>
+(venv) $ docker-compose up -build
+[+] Building 32.9s (17/17) FINISHED
+
+[...]
+
+</code></pre>
+
+<p>Enfin, tapons l'adresse : <code>0.0.0.0</code> dans le navigateur :</p>
+
+<p>Et voilà le travail !</p>
+
+<h2>Conclusion</h2>
+
+<p>Nous avons vu comment créer une <strong>application</strong> simple avec <strong>Django</strong> et comment la tester dans un environnement de <strong>production</strong>.</p>
+
+<p>Le principe reste le même lors du <strong>déploiement</strong> sur un <strong>serveur physique</strong> ou dans le <strong>cloud</strong>.</p>
