@@ -424,6 +424,8 @@ html {
   font-family: Roboto, sans-serif;
   background: lightcoral;
   color: white;
+  max-width: 70ch;
+  margin: auto;
 }
 
 hr {
