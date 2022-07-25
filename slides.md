@@ -59,7 +59,7 @@ HTTP      ,------------.
 ```
 ---
 <!-- fg=white bg=black -->
-# OhMyBlog!
+# Partie I : OhMyBlog!
 ---
 <!-- fg=white bg=black -->
 ```
@@ -133,7 +133,7 @@ HTTP      ,------------.
 ## Résultat.
 ---
 <!-- fg=white bg=black -->
-# Test en production
+# Partie II : Production
 ---
 <!-- fg=white bg=black -->
 ## Le fichier de configuration.

@@ -1,6 +1,6 @@
 # Développer et déployer une application Django
 
-Dans cet article nous allons voir dans les grandes lignes le développement, le test et le déploiement en **production** dans un conteneur **Docker**.
+Dans cet article nous allons voir dans les grandes lignes le **développement** d'une application web avec **Django**, puis son **déploiement en production** dans un conteneur **Docker**.
 
 ## Django
 
@@ -10,7 +10,7 @@ Dans cet article nous allons voir dans les grandes lignes le développement, le 
 
 ### MVT vs. MVC
 
-L'architecture **MVC** (pour **Model View Controller**) est un modèle de conception qui sépare le traitement et la représentation des données :
+L'architecture **MVC** (pour **Model View Controller**) est un modèle de conception d'application qui sépare le traitement et la représentation des données :
 
 ![mvc](images/mvc.png)
 
